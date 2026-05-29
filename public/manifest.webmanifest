@@ -1,0 +1,9 @@
+{
+  "name": "PacePulse Workout Timer",
+  "short_name": "PacePulse",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "description": "A PWA workout timer for HIIT and muscle training with audio rewards."
+}

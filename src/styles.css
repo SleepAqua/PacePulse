@@ -1,0 +1,201 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #020617;
+  color: #e2e8f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body, html, #root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: radial-gradient(circle at top, #0f172a 0%, #040712 60%);
+}
+
+.app-shell {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+header {
+  margin-bottom: 24px;
+}
+
+header h1 {
+  margin: 0 0 8px;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+header p {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.mode-switcher {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.mode-switcher button {
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 14px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.mode-switcher button.active,
+.mode-switcher button:hover {
+  background: #1e293b;
+}
+
+.panel {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 24px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.panel-header h2 {
+  margin: 0 0 10px;
+}
+
+.panel-body {
+  display: grid;
+  gap: 16px;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.field-row.vertical {
+  grid-template-columns: 1fr;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
+input[type='number'], input[type='file'], select {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: #e2e8f0;
+  padding: 12px 14px;
+}
+
+.audio-hint {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.92rem;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+button {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 18px;
+  color: #f8fafc;
+  background: #2563eb;
+  cursor: pointer;
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  background: #1d4ed8;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.status-card,
+.history-card,
+.audio-panel .panel-body {
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.status-card p,
+.history-card p,
+.audio-panel p {
+  margin: 0 0 8px;
+}
+
+.timer-display {
+  font-size: 2.5rem;
+  margin: 12px 0 0;
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.audio-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.audio-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(30, 41, 59, 0.9);
+  border-radius: 12px;
+}
+
+.audio-list button {
+  background: #475569;
+}
+
+.complete-banner {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #bfdbfe;
+}
+
+@media (max-width: 720px) {
+  .mode-switcher,
+  .field-row,
+  .control-row {
+    grid-template-columns: 1fr;
+  }
+}
