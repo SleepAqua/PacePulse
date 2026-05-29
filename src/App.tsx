@@ -1,8 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { openDB } from 'idb';
 
 type Mode = 'HIIT' | 'Muscle Training';
 
-type AudioClip = { name: string; url: string };
+type AudioClip = { id: number; name: string; url: string };
+
+type AudioDB = {
+  'audio-clips': {
+    id: number;
+    name: string;
+    blob: Blob;
+  };
+};
+
+const DB_NAME = 'pacepulse-audio';
+const DB_STORE = 'audio-clips';
+const dbPromise = openDB<AudioDB>(DB_NAME, 1, {
+  upgrade(db) {
+    if (!db.objectStoreNames.contains(DB_STORE)) {
+      db.createObjectStore(DB_STORE, { keyPath: 'id', autoIncrement: true });
+    }
+  },
+});
 
 const formatTime = (seconds: number) => {
   const mins = Math.floor(seconds / 60);
@@ -29,15 +48,15 @@ const makeBeep = () => {
 
 const App = () => {
   const [mode, setMode] = useState<Mode>('HIIT');
-  const [hiitLoops, setHiitLoops] = useState(5);
-  const [exerciseTime, setExerciseTime] = useState(40);
-  const [restTime, setRestTime] = useState(20);
+  const [hiitLoops, setHiitLoops] = useState<number | string>(5);
+  const [exerciseTime, setExerciseTime] = useState<number | string>(40);
+  const [restTime, setRestTime] = useState<number | string>(20);
   const [hiitActivePhase, setHiitActivePhase] = useState<'exercise' | 'rest' | 'idle'>('idle');
   const [hiitSecondsLeft, setHiitSecondsLeft] = useState(40);
   const [hiitCurrentLoop, setHiitCurrentLoop] = useState(1);
   const [hiitRunning, setHiitRunning] = useState(false);
-  const [muscleSets, setMuscleSets] = useState(4);
-  const [muscleRestTime, setMuscleRestTime] = useState(60);
+  const [muscleSets, setMuscleSets] = useState<number | string>(4);
+  const [muscleRestTime, setMuscleRestTime] = useState<number | string>(60);
   const [setRepsInput, setSetRepsInput] = useState('');
   const [completedSets, setCompletedSets] = useState<number[]>([]);
   const [muscleSecondsLeft, setMuscleSecondsLeft] = useState(0);
@@ -47,14 +66,21 @@ const App = () => {
   const [activeAudioName, setActiveAudioName] = useState<string>('');
   const [countdownSound, setCountdownSound] = useState<'female' | 'male' | 'beep'>('female');
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioUrls = useRef<string[]>([]);
+
+  const createAudioUrl = (blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    audioUrls.current.push(url);
+    return url;
+  };
 
   const hiitComplete = useMemo(
-    () => hiitCurrentLoop > hiitLoops && hiitActivePhase === 'idle',
+    () => hiitCurrentLoop > (Number(hiitLoops) || 0) && hiitActivePhase === 'idle',
     [hiitCurrentLoop, hiitLoops, hiitActivePhase]
   );
 
   const muscleComplete = useMemo(
-    () => completedSets.length >= muscleSets && musclePhase === 'done',
+    () => completedSets.length >= (Number(muscleSets) || 0) && musclePhase === 'done',
     [completedSets.length, muscleSets, musclePhase]
   );
 
@@ -147,6 +173,31 @@ const App = () => {
   }, [sessionComplete]);
 
   useEffect(() => {
+    let active = true;
+
+    const loadPersistedAudio = async () => {
+      const db = await dbPromise;
+      const storedClips = await db.getAll(DB_STORE);
+      if (!active) return;
+      setAudioClips(
+        storedClips.map((clip) => ({
+          id: clip.id,
+          name: clip.name,
+          url: createAudioUrl(clip.blob),
+        }))
+      );
+    };
+
+    loadPersistedAudio();
+
+    return () => {
+      active = false;
+      audioUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      audioUrls.current = [];
+    };
+  }, []);
+
+  useEffect(() => {
     if (!hiitRunning || hiitActivePhase === 'idle') return;
 
     const timer = window.setInterval(() => {
@@ -172,15 +223,18 @@ const App = () => {
 
   useEffect(() => {
     if (!hiitRunning || hiitActivePhase === 'idle') return;
-
     if (hiitSecondsLeft !== 0) return;
 
+    const ex = Number(exerciseTime) || 0;
+    const rt = Number(restTime) || 0;
+    const loopsNum = Number(hiitLoops) || 0;
+
     if (hiitActivePhase === 'exercise') {
-      if (restTime > 0) {
+      if (rt > 0) {
         setHiitActivePhase('rest');
-        setHiitSecondsLeft(restTime);
+        setHiitSecondsLeft(rt);
       } else {
-        if (hiitCurrentLoop >= hiitLoops) {
+        if (hiitCurrentLoop >= loopsNum) {
           setHiitActivePhase('idle');
           setHiitRunning(false);
           setHiitCurrentLoop((loop) => loop + 1);
@@ -188,14 +242,14 @@ const App = () => {
         } else {
           setHiitActivePhase('exercise');
           setHiitCurrentLoop((loop) => loop + 1);
-          setHiitSecondsLeft(exerciseTime);
+          setHiitSecondsLeft(ex);
         }
       }
       return;
     }
 
     if (hiitActivePhase === 'rest') {
-      if (hiitCurrentLoop >= hiitLoops) {
+      if (hiitCurrentLoop >= loopsNum) {
         setHiitActivePhase('idle');
         setHiitRunning(false);
         setHiitCurrentLoop((loop) => loop + 1);
@@ -203,7 +257,7 @@ const App = () => {
       } else {
         setHiitActivePhase('exercise');
         setHiitCurrentLoop((loop) => loop + 1);
-        setHiitSecondsLeft(exerciseTime);
+        setHiitSecondsLeft(ex);
       }
     }
   }, [hiitSecondsLeft, hiitActivePhase, hiitCurrentLoop, hiitLoops, exerciseTime, restTime, hiitRunning]);
@@ -223,7 +277,7 @@ const App = () => {
 
   useEffect(() => {
     if (musclePhase === 'resting' && muscleSecondsLeft === 0) {
-      if (completedSets.length >= muscleSets) {
+      if (completedSets.length >= (Number(muscleSets) || 0)) {
         setMusclePhase('done');
         setSessionComplete(true);
       } else {
@@ -242,7 +296,7 @@ const App = () => {
 
   const resetHIIT = () => {
     setHiitActivePhase('idle');
-    setHiitSecondsLeft(exerciseTime);
+    setHiitSecondsLeft(Number(exerciseTime) || 0);
     setHiitCurrentLoop(1);
     setHiitRunning(false);
     setSessionComplete(false);
@@ -259,12 +313,14 @@ const App = () => {
   };
 
   const startHIIT = () => {
-    if (hiitLoops < 1 || exerciseTime < 1) return;
+    const ex = Number(exerciseTime) || 0;
+    const loopsNum = Number(hiitLoops) || 0;
+    if (loopsNum < 1 || ex < 1) return;
     resumeAudioContext();
     setSessionComplete(false);
     setHiitCurrentLoop(1);
     setHiitActivePhase('exercise');
-    setHiitSecondsLeft(exerciseTime);
+    setHiitSecondsLeft(ex);
     setHiitRunning(true);
     setActiveAudioName('');
   };
@@ -276,32 +332,39 @@ const App = () => {
     const nextSets = [...completedSets, reps];
     setCompletedSets(nextSets);
     setSetRepsInput('');
-    if (nextSets.length >= muscleSets) {
+    if (nextSets.length >= (Number(muscleSets) || 0)) {
       setMusclePhase('done');
       setSessionComplete(true);
       setMuscleSecondsLeft(0);
       return;
     }
     setMusclePhase('resting');
-    setMuscleSecondsLeft(muscleRestTime);
+    setMuscleSecondsLeft(Number(muscleRestTime) || 0);
   };
 
-  const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
+    const db = await dbPromise;
     const newClips: AudioClip[] = [];
     for (const file of Array.from(files)) {
       if (!file.type.startsWith('audio')) continue;
-      const url = URL.createObjectURL(file);
-      newClips.push({ name: file.name, url });
+      const id = await db.add(DB_STORE, { name: file.name, blob: file });
+      const url = createAudioUrl(file);
+      newClips.push({ id: Number(id), name: file.name, url });
     }
     setAudioClips((existing) => [...existing, ...newClips]);
     event.target.value = '';
   };
 
-  const removeClip = (index: number) => {
-    const remaining = audioClips.filter((_, i) => i !== index);
-    setAudioClips(remaining);
+  const removeClip = async (index: number) => {
+    const clip = audioClips[index];
+    if (!clip) return;
+    const db = await dbPromise;
+    await db.delete(DB_STORE, clip.id);
+    URL.revokeObjectURL(clip.url);
+    audioUrls.current = audioUrls.current.filter((url) => url !== clip.url);
+    setAudioClips((existing) => existing.filter((_, i) => i !== index));
   };
 
   return (
@@ -342,7 +405,7 @@ const App = () => {
                     type="number"
                     min={1}
                     value={hiitLoops}
-                    onChange={(event) => setHiitLoops(Number(event.target.value) || 1)}
+                    onChange={(event) => setHiitLoops(event.target.value)}
                   />
                 </label>
                 <label>
@@ -351,7 +414,7 @@ const App = () => {
                     type="number"
                     min={5}
                     value={exerciseTime}
-                    onChange={(event) => setExerciseTime(Number(event.target.value) || 5)}
+                    onChange={(event) => setExerciseTime(event.target.value)}
                   />
                 </label>
                 <label>
@@ -360,13 +423,13 @@ const App = () => {
                     type="number"
                     min={0}
                     value={restTime}
-                    onChange={(event) => setRestTime(Number(event.target.value) || 0)}
+                    onChange={(event) => setRestTime(event.target.value)}
                   />
                 </label>
               </div>
 
               <div className="status-card">
-                <p>Loop {Math.min(hiitCurrentLoop, hiitLoops)} / {hiitLoops}</p>
+                <p>Loop {Math.min(hiitCurrentLoop, Number(hiitLoops) || 0)} / {Number(hiitLoops) || 0}</p>
                 <p>Phase: {hiitActivePhase === 'idle' ? 'Idle' : hiitActivePhase}</p>
                 <p className="timer-display">{formatTime(hiitSecondsLeft)}</p>
               </div>
@@ -387,7 +450,7 @@ const App = () => {
                     type="number"
                     min={1}
                     value={muscleSets}
-                    onChange={(event) => setMuscleSets(Number(event.target.value) || 1)}
+                    onChange={(event) => setMuscleSets(event.target.value)}
                   />
                 </label>
                 <label>
@@ -396,7 +459,7 @@ const App = () => {
                     type="number"
                     min={10}
                     value={muscleRestTime}
-                    onChange={(event) => setMuscleRestTime(Number(event.target.value) || 10)}
+                    onChange={(event) => setMuscleRestTime(event.target.value)}
                   />
                 </label>
               </div>
