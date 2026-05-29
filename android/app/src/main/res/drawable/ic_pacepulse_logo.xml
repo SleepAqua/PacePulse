@@ -1,0 +1,39 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Timer Outer Ring -->
+    <path
+        android:pathData="M50,10 A40,40 0 1,1 49.9,10"
+        android:strokeColor="#38bdf8"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"/>
+
+    <!-- Timer Ticks -->
+    <path
+        android:pathData="M50,10 L50,15 M90,50 L85,50 M50,90 L50,85 M10,50 L15,50"
+        android:strokeColor="#38bdf8"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"/>
+
+    <!-- First P (Pace) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M35,35 L35,65 M35,35 L48,35 C53,35 55,38 55,42 C55,46 53,49 48,49 L35,49"/>
+
+    <!-- Second P (Pulse) - slightly offset and thinner/stylized -->
+    <path
+        android:fillColor="#38bdf8"
+        android:pathData="M45,45 L45,75 M45,45 L58,45 C63,45 65,48 65,52 C65,56 63,59 58,59 L45,59"/>
+
+    <!-- Pulse line integrated into the second P's tail -->
+    <path
+        android:pathData="M50,70 L53,67 L57,73 L60,70"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+
+</vector>
