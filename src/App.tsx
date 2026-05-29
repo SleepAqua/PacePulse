@@ -3,12 +3,15 @@ import { openDB } from 'idb';
 
 type Mode = 'HIIT' | 'Muscle Training' | 'History';
 
+type MuscleGroup = 'Chest' | 'Back' | 'Leg' | 'Core' | 'Shoulder' | 'Arms' | 'Other';
+
 type AudioClip = { id: number; name: string; url: string };
 
 type WorkoutEntry = {
   id?: number;
   date: string; // YYYY-MM-DD
   mode: 'HIIT' | 'Muscle Training';
+  muscleGroup?: MuscleGroup;
   reps?: number[];
   totalReps?: number;
   duration: number; // seconds
@@ -76,8 +79,9 @@ const App = () => {
   const [hiitRunning, setHiitRunning] = useState(false);
   const [hiitPaused, setHiitPaused] = useState(false);
   const [muscleSets, setMuscleSets] = useState<number | string>(4);
-  const [muscleRestMinutes, setMuscleRestMinutes] = useState<number | string>(1);
-  const [muscleRestSeconds, setMuscleRestSeconds] = useState<number | string>(0);
+  const [muscleGroup, setMuscleGroup] = useState<MuscleGroup>('Chest');
+  const [muscleRestMinutes, setMuscleRestMinutes] = useState<number | string>(2);
+  const [muscleRestSeconds, setMuscleRestSeconds] = useState<number | string>(30);
   const [setRepsInput, setSetRepsInput] = useState('');
   const [completedSets, setCompletedSets] = useState<number[]>([]);
   const [muscleSecondsLeft, setMuscleSecondsLeft] = useState(0);
@@ -86,11 +90,9 @@ const App = () => {
   const [audioClips, setAudioClips] = useState<AudioClip[]>([]);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [activeAudioName, setActiveAudioName] = useState<string>('');
-  const [countdownSound, setCountdownSound] = useState<'female' | 'male' | 'beep'>('female');
   const audioCtxRef = useRef<AudioContext | null>(null);
   const rewardAudioRef = useRef<HTMLAudioElement | null>(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const audioUrls = useRef<string[]>([]);
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutEntry[]>([]);
   const [selectedHistoryDate, setSelectedHistoryDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -104,33 +106,6 @@ const App = () => {
 
   const getSeconds = (minutes: number | string, seconds: number | string) =>
     (Number(minutes) || 0) * 60 + (Number(seconds) || 0);
-
-  const getSelectedVoice = () => {
-    if (!('speechSynthesis' in window)) return null;
-    
-    // Always try to get fresh voices from the system
-    let voicesList = window.speechSynthesis.getVoices();
-    // Fallback to state if system returns empty (sometimes happens on first call)
-    if (!voicesList.length && voices.length) {
-      voicesList = voices;
-    }
-    if (!voicesList.length) return null;
-
-    // Prefer voice by gender keywords in name
-    const genderMatcher = countdownSound === 'female'
-      ? /female|woman|zira|susan|alloy|linda|karen|victoria|moira|nova/i
-      : /male|man|david|ryan|matt|mark|michael|george|amara/i;
-    
-    let match = voicesList.find((voice) => genderMatcher.test(voice.name));
-    if (match) return match;
-
-    // Fallback: match by lang and pick first available
-    match = voicesList.find((voice) => voice.lang.startsWith('en'));
-    if (match) return match;
-
-    // Last resort: use first voice
-    return voicesList[0];
-  };
 
   const hiitComplete = useMemo(
     () => hiitCurrentLoop > (Number(hiitLoops) || 0) && hiitActivePhase === 'idle',
@@ -181,18 +156,6 @@ const App = () => {
     });
   };
 
-  const pauseCountdownVoice = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.pause();
-    }
-  };
-
-  const resumeCountdownVoice = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.resume();
-    }
-  };
-
   const ensureAudioContext = () => {
     if (!audioCtxRef.current) {
       try {
@@ -225,6 +188,17 @@ const App = () => {
     }
   };
 
+  const deleteWorkoutEntry = async (id: number) => {
+    if (!window.confirm('Delete this workout entry?')) return;
+    try {
+      const db = await dbPromise;
+      await db.delete(HISTORY_STORE, id);
+      setWorkoutHistory((prev) => prev.filter((entry) => entry.id !== id));
+    } catch (error) {
+      console.warn('Failed to delete workout entry:', error);
+    }
+  };
+
   const loadWorkoutHistory = async () => {
     try {
       const db = await dbPromise;
@@ -233,6 +207,29 @@ const App = () => {
     } catch (error) {
       console.warn('Failed to load workout history:', error);
     }
+  };
+
+  const getCalendarData = (days: number) => {
+    const data: Record<string, { duration: number; types: string[]; dayNum: number }> = {};
+    const now = new Date();
+    for (let i = 0; i < days; i++) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      data[dateStr] = { duration: 0, types: [], dayNum: d.getDate() };
+    }
+
+    workoutHistory.forEach((entry) => {
+      if (data[entry.date]) {
+        data[entry.date].duration += entry.duration;
+        const typeLabel = entry.mode === 'HIIT' ? 'HIIT' : (entry.muscleGroup || 'Muscle');
+        if (!data[entry.date].types.includes(typeLabel)) {
+          data[entry.date].types.push(typeLabel);
+        }
+      }
+    });
+
+    return Object.entries(data).reverse();
   };
 
   const getHistoryByDate = (date: string) => {
@@ -263,41 +260,7 @@ const App = () => {
   };
 
   const speakNumber = (n: number) => {
-    const freqMap: Record<number, number> = { 5: 900, 4: 800, 3: 700, 2: 600, 1: 500 };
-    const pitchFreq = freqMap[n] || 880;
-
-    if (countdownSound === 'beep' || !('speechSynthesis' in window)) {
-      playBeep(pitchFreq, 0.2);
-      return;
-    }
-
-    const voice = getSelectedVoice();
-    
-    // If no voice available, fall back to beep
-    if (!voice) {
-      playBeep(pitchFreq, 0.2);
-      return;
-    }
-
-    try {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(String(n));
-      utter.lang = 'en-US';
-      utter.rate = 1;
-      utter.pitch = countdownSound === 'female' ? 1.5 : 0.8;
-      utter.volume = 1;
-      utter.voice = voice;
-      
-      utter.onerror = () => {
-        console.warn('Speech synthesis error, falling back to beep');
-        playBeep(pitchFreq, 0.18);
-      };
-
-      window.speechSynthesis.speak(utter);
-    } catch (e) {
-      console.warn('Speech synthesis exception:', e);
-      playBeep(pitchFreq, 0.18);
-    }
+    playBeep(440 + n * 100, 0.2);
   };
 
   useEffect(() => {
@@ -312,6 +275,7 @@ const App = () => {
         saveWorkoutEntry({
           date: today,
           mode: 'Muscle Training',
+          muscleGroup,
           reps: completedSets,
           totalReps: completedSets.reduce((sum, val) => sum + val, 0),
           duration,
@@ -358,29 +322,6 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (!('speechSynthesis' in window)) return;
-
-    const loadVoices = () => {
-      const voicesList = window.speechSynthesis.getVoices();
-      if (voicesList.length) {
-        setVoices(voicesList);
-      }
-    };
-
-    // Load voices immediately
-    loadVoices();
-
-    // Voices often load asynchronously on mobile
-    window.speechSynthesis.onvoiceschanged = () => {
-      loadVoices();
-    };
-
-    return () => {
-      window.speechSynthesis.onvoiceschanged = null;
-    };
-  }, []);
-
-  useEffect(() => {
     if (!hiitRunning || hiitActivePhase === 'idle' || hiitPaused) return;
 
     const timer = window.setInterval(() => {
@@ -396,16 +337,16 @@ const App = () => {
     return () => window.clearInterval(timer);
   }, [hiitRunning, hiitActivePhase, hiitPaused]);
 
-  // Play spoken or beep countdown when 5 seconds or less remain
+  // Play beep countdown when 5 seconds or less remain
   useEffect(() => {
     if (!hiitRunning || hiitActivePhase === 'idle') return;
     if (hiitSecondsLeft <= 5 && hiitSecondsLeft > 0) {
       speakNumber(hiitSecondsLeft);
     }
-  }, [hiitSecondsLeft, hiitRunning, hiitActivePhase, countdownSound]);
+  }, [hiitSecondsLeft, hiitRunning, hiitActivePhase]);
 
   useEffect(() => {
-    if (!hiitRunning || hiitActivePhase === 'idle') return;
+    if (!hiitRunning || hiitActivePhase === 'idle' || hiitPaused) return;
     if (hiitSecondsLeft !== 0) return;
 
     const ex = getSeconds(exerciseMinutes, exerciseSeconds);
@@ -443,7 +384,7 @@ const App = () => {
         setHiitSecondsLeft(ex);
       }
     }
-  }, [hiitSecondsLeft, hiitActivePhase, hiitCurrentLoop, hiitLoops, exerciseMinutes, exerciseSeconds, restMinutes, restSeconds, hiitRunning]);
+  }, [hiitSecondsLeft, hiitActivePhase, hiitCurrentLoop, hiitLoops, exerciseMinutes, exerciseSeconds, restMinutes, restSeconds, hiitRunning, hiitPaused]);
 
   useEffect(() => {
     if (musclePhase !== 'resting' || musclePaused) return;
@@ -459,7 +400,7 @@ const App = () => {
   }, [musclePhase, musclePaused]);
 
   useEffect(() => {
-    if (musclePhase === 'resting' && muscleSecondsLeft === 0) {
+    if (musclePhase === 'resting' && muscleSecondsLeft === 0 && !musclePaused) {
       if (completedSets.length >= (Number(muscleSets) || 0)) {
         setMusclePhase('done');
         setSessionComplete(true);
@@ -467,15 +408,15 @@ const App = () => {
         setMusclePhase('waiting');
       }
     }
-  }, [muscleSecondsLeft, completedSets.length, muscleSets, musclePhase]);
+  }, [muscleSecondsLeft, completedSets.length, muscleSets, musclePhase, musclePaused]);
 
-  // countdown audio for muscle rest
+  // countdown for muscle rest
   useEffect(() => {
     if (musclePhase !== 'resting') return;
     if (muscleSecondsLeft <= 5 && muscleSecondsLeft > 0) {
       speakNumber(muscleSecondsLeft);
     }
-  }, [muscleSecondsLeft, musclePhase, countdownSound]);
+  }, [muscleSecondsLeft, musclePhase]);
 
   const resetHIIT = () => {
     setHiitActivePhase('idle');
@@ -516,22 +457,12 @@ const App = () => {
     if (!hiitRunning) return;
     const newPausedState = !hiitPaused;
     setHiitPaused(newPausedState);
-    if (newPausedState) {
-      pauseCountdownVoice();
-    } else {
-      resumeCountdownVoice();
-    }
   };
 
   const toggleMusclePause = () => {
     if (musclePhase !== 'resting') return;
     const newPausedState = !musclePaused;
     setMusclePaused(newPausedState);
-    if (newPausedState) {
-      pauseCountdownVoice();
-    } else {
-      resumeCountdownVoice();
-    }
   };
 
   const addReps = () => {
@@ -585,7 +516,7 @@ const App = () => {
   return (
     <div className="app-shell">
       <header>
-        <h1>PacePulse Workout Timer</h1>
+        <h1>PacePulse Timer</h1>
         <p>HIIT & Muscle Training timer with reward audio for session completion.</p>
       </header>
 
@@ -613,6 +544,26 @@ const App = () => {
 
           {mode === 'History' ? (
             <div className="panel-body history-panel">
+              <div className="calendar-section">
+                <h3>Last 30 Days</h3>
+                <div className="calendar-grid">
+                  {getCalendarData(30).map(([date, info]) => (
+                    <div
+                      key={date}
+                      className={`calendar-day ${info.duration > 0 ? 'has-data' : ''}`}
+                      title={date}
+                    >
+                      <span className="day-num">{info.dayNum}</span>
+                      {info.duration > 0 && (
+                        <div className="day-info">
+                          <span className="day-types">{info.types.join(',')}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="calendar-header">
                 <h3>Select a date to view workouts</h3>
               </div>
@@ -628,7 +579,9 @@ const App = () => {
                 <div className="history-list">
                   {getHistoryByDate(selectedHistoryDate).map((entry, idx) => (
                     <div key={idx} className="history-item">
-                      <div className="history-mode">{entry.mode}</div>
+                      <div className="history-mode">
+                        {entry.mode === 'HIIT' ? 'HIIT' : (entry.muscleGroup || 'Muscle Training')}
+                      </div>
                       <div className="history-details">
                         {entry.mode === 'Muscle Training' && entry.reps && (
                           <>
@@ -638,6 +591,13 @@ const App = () => {
                         )}
                         <p>Duration: {formatTime(entry.duration)}</p>
                       </div>
+                      <button
+                        className="delete-btn"
+                        onClick={() => entry.id && deleteWorkoutEntry(entry.id)}
+                        title="Delete entry"
+                      >
+                        ✕
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -670,44 +630,56 @@ const App = () => {
                 </label>
                 <label>
                   Exercise
-                  <div className="inline-inputs">
-                    <input
-                      type="number"
-                      min={0}
-                      value={exerciseMinutes}
-                      onChange={(event) => setExerciseMinutes(event.target.value)}
-                      placeholder="min"
-                    />
-                    <span>:</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={59}
-                      value={exerciseSeconds}
-                      onChange={(event) => setExerciseSeconds(event.target.value)}
-                      placeholder="sec"
-                    />
+                  <div className="inline-inputs-container">
+                    <div className="inline-inputs">
+                      <div className="input-with-label">
+                        <input
+                          type="number"
+                          min={0}
+                          value={exerciseMinutes}
+                          onChange={(event) => setExerciseMinutes(event.target.value)}
+                        />
+                        <span className="unit-label">min</span>
+                      </div>
+                      <span className="separator">:</span>
+                      <div className="input-with-label">
+                        <input
+                          type="number"
+                          min={0}
+                          max={59}
+                          value={exerciseSeconds}
+                          onChange={(event) => setExerciseSeconds(event.target.value)}
+                        />
+                        <span className="unit-label">sec</span>
+                      </div>
+                    </div>
                   </div>
                 </label>
                 <label>
                   Rest
-                  <div className="inline-inputs">
-                    <input
-                      type="number"
-                      min={0}
-                      value={restMinutes}
-                      onChange={(event) => setRestMinutes(event.target.value)}
-                      placeholder="min"
-                    />
-                    <span>:</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={59}
-                      value={restSeconds}
-                      onChange={(event) => setRestSeconds(event.target.value)}
-                      placeholder="sec"
-                    />
+                  <div className="inline-inputs-container">
+                    <div className="inline-inputs">
+                      <div className="input-with-label">
+                        <input
+                          type="number"
+                          min={0}
+                          value={restMinutes}
+                          onChange={(event) => setRestMinutes(event.target.value)}
+                        />
+                        <span className="unit-label">min</span>
+                      </div>
+                      <span className="separator">:</span>
+                      <div className="input-with-label">
+                        <input
+                          type="number"
+                          min={0}
+                          max={59}
+                          value={restSeconds}
+                          onChange={(event) => setRestSeconds(event.target.value)}
+                        />
+                        <span className="unit-label">sec</span>
+                      </div>
+                    </div>
                   </div>
                 </label>
               </div>
@@ -722,17 +694,31 @@ const App = () => {
                 <button onClick={startHIIT} disabled={hiitRunning || hiitComplete}>
                   Start HIIT
                 </button>
-                {hiitRunning && (
-                  <button className="pause-button" type="button" onClick={toggleHIITPause}>
-                    {hiitPaused ? '▶️ Resume' : '⏸ Pause'}
-                  </button>
-                )}
+                <button
+                  className="pause-button"
+                  type="button"
+                  onClick={toggleHIITPause}
+                  disabled={!hiitRunning || hiitComplete}
+                >
+                  {hiitPaused ? '▶️ Resume' : '⏸ Pause'}
+                </button>
                 <button onClick={resetHIIT}>Reset</button>
               </div>
             </div>
           ) : (
             <div className="panel-body">
               <div className="field-row">
+                <label>
+                  Muscle Group
+                  <select
+                    value={muscleGroup}
+                    onChange={(event) => setMuscleGroup(event.target.value as MuscleGroup)}
+                  >
+                    {['Chest', 'Back', 'Leg', 'Core', 'Shoulder', 'Arms'].map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </label>
                 <label>
                   Sets
                   <input
@@ -744,23 +730,29 @@ const App = () => {
                 </label>
                 <label>
                   Rest
-                  <div className="inline-inputs">
-                    <input
-                      type="number"
-                      min={0}
-                      value={muscleRestMinutes}
-                      onChange={(event) => setMuscleRestMinutes(event.target.value)}
-                      placeholder="min"
-                    />
-                    <span>:</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={59}
-                      value={muscleRestSeconds}
-                      onChange={(event) => setMuscleRestSeconds(event.target.value)}
-                      placeholder="sec"
-                    />
+                  <div className="inline-inputs-container">
+                    <div className="inline-inputs">
+                      <div className="input-with-label">
+                        <input
+                          type="number"
+                          min={0}
+                          value={muscleRestMinutes}
+                          onChange={(event) => setMuscleRestMinutes(event.target.value)}
+                        />
+                        <span className="unit-label">min</span>
+                      </div>
+                      <span className="separator">:</span>
+                      <div className="input-with-label">
+                        <input
+                          type="number"
+                          min={0}
+                          max={59}
+                          value={muscleRestSeconds}
+                          onChange={(event) => setMuscleRestSeconds(event.target.value)}
+                        />
+                        <span className="unit-label">sec</span>
+                      </div>
+                    </div>
                   </div>
                 </label>
               </div>
@@ -787,6 +779,18 @@ const App = () => {
                 </button>
               </div>
 
+              <div className="control-row">
+                <button
+                  className="pause-button"
+                  type="button"
+                  onClick={toggleMusclePause}
+                  disabled={musclePhase !== 'resting'}
+                >
+                  {musclePaused ? '▶️ Resume' : '⏸ Pause'}
+                </button>
+                <button onClick={resetMuscle}>Reset</button>
+              </div>
+
               <div className="history-card">
                 <h3>Set history</h3>
                 {completedSets.length === 0 ? (
@@ -798,15 +802,6 @@ const App = () => {
                     ))}
                   </ul>
                 )}
-              </div>
-
-              <div className="control-row">
-                {musclePhase === 'resting' && (
-                  <button className="pause-button" type="button" onClick={toggleMusclePause}>
-                    {musclePaused ? '▶️ Resume' : '⏸ Pause'}
-                  </button>
-                )}
-                <button onClick={resetMuscle}>Reset</button>
               </div>
             </div>
           )}
@@ -821,17 +816,6 @@ const App = () => {
               Upload audio files
               <input type="file" accept="audio/*" multiple onChange={handleAudioUpload} />
             </label>
-            <p className="audio-hint">Pick the countdown sound before starting the timer.</p>
-            <div className="field-row">
-              <label>
-                Countdown sound
-                <select value={countdownSound} onChange={(e) => setCountdownSound(e.target.value as any)}>
-                  <option value="female">Voice (female)</option>
-                  <option value="male">Voice (male)</option>
-                  <option value="beep">Beeps (fallback)</option>
-                </select>
-              </label>
-            </div>
             <div className="field-row audio-control-row">
               <button type="button" onClick={playRewardAudio} disabled={audioPlaying}>
                 Play reward now
