@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { openDB } from 'idb';
 
-type Mode = 'HIIT' | 'Muscle Training' | 'History';
+type Mode = 'HIIT' | 'Muscle Training' | 'Miscellaneous' | 'History';
 
 type MuscleGroup = 'Chest' | 'Back' | 'Leg' | 'Core' | 'Shoulder' | 'Arms' | 'Other';
 
@@ -521,7 +521,7 @@ const App = () => {
       </header>
 
       <section className="mode-switcher">
-        {(['HIIT', 'Muscle Training', 'History'] as Mode[]).map((option) => (
+        {(['HIIT', 'Muscle Training', 'Miscellaneous', 'History'] as Mode[]).map((option) => (
           <button
             key={option}
             className={mode === option ? 'active' : ''}
@@ -539,7 +539,9 @@ const App = () => {
       <main>
         <section className="panel">
           <div className="panel-header">
-            <h2>{mode === 'HIIT' ? 'HIIT Timer' : mode === 'Muscle Training' ? 'Muscle Training Timer' : 'Workout History'}</h2>
+            <h2>
+              {mode === 'HIIT' ? 'HIIT Timer' : mode === 'Miscellaneous' ? 'Miscellaneous Timer' : mode === 'Muscle Training' ? 'Muscle Training Timer' : 'Workout History'}
+            </h2>
           </div>
 
           {mode === 'History' ? (
@@ -616,7 +618,7 @@ const App = () => {
                 </div>
               </div>
             </div>
-          ) : mode === 'HIIT' ? (
+          ) : (mode === 'HIIT' || mode === 'Miscellaneous') ? (
             <div className="panel-body">
               <div className="field-row">
                 <label>
@@ -813,8 +815,8 @@ const App = () => {
           </div>
           <div className="panel-body">
             <label className="file-upload">
-              Upload audio files
-              <input type="file" accept="audio/*" multiple onChange={handleAudioUpload} />
+              Upload audio files or folders
+              <input type="file" accept="audio/*" multiple onChange={handleAudioUpload} {...({ webkitdirectory: true, directory: true } as any)} />
             </label>
             <div className="field-row audio-control-row">
               <button type="button" onClick={playRewardAudio} disabled={audioPlaying}>

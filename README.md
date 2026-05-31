@@ -1,76 +1,51 @@
-# PacePulse Workout Timer
+# PacePulse
 
-Your personal workout companion for HIIT and muscle training—works offline on any device.
+PacePulse is a lightweight workout app for HIIT and Muscle Training. It runs offline and stores your workout history locally so you keep control of your data.
 
-## Features
+Important: this project is now shipped as an app (native wrapper via Capacitor or as an installed web app) — it's no longer focused on being distributed as a PWA-only experience.
 
-✨ **Two workout modes:**
-- **HIIT Timer** – Customizable exercise and rest intervals with loop tracking
-- **Muscle Training** – Log sets and reps with automatic rest periods between sets
+## What it does
 
-🎙️ **Audio rewards** – Upload your own audio files to play when you finish a session (or use default beeps)
+- HIIT Timer: configurable exercise/rest intervals and loop counts
+- Muscle Training: log sets and reps, automatic rest countdown between sets
+- Miscellaneous mode: works like HIIT but does not record the workout in history
+- Audio rewards: upload audio files or folders; plays a random reward clip when a session finishes
+- Pause/Resume: pause timers and countdown voice; pause and resume reward playback
+- Workout history: view saved workouts by date and aggregated stats for the last 30 days
 
-🗣️ **Spoken countdown** – Choose male or female voice (or beeps) for final countdown audio
+## Quick use
 
-📊 **Workout history** – View past workouts by date and see your progress over the last 30 days
+1. Open the app (in a browser or the installed app on your device)
+2. Pick a mode (`HIIT`, `Muscle Training`, or `Miscellaneous`)
+3. Configure minutes and seconds for exercise/rest
+4. (Optional) Upload audio files or an entire folder in the Audio panel
+5. Tap `Start` to begin; use `Pause` during rest if needed
+6. View results in `History` (excluded for `Miscellaneous` mode)
 
-📱 **Works anywhere** – Install on your phone, works offline, no internet required
+## Installing on Android (for developers)
 
-🔊 **Pause & resume** – Take a break during your workout and continue when ready
+Build and open with Capacitor or simply install the app from the browser if supported:
 
-## Getting started
-
-### On your phone
-
-1. **Open in your browser** – Visit the app in Chrome, Safari, or your favorite browser
-2. **Install it** – Look for "Install" or "Add to Home screen" option in your browser menu
-3. **Use it** – The app works online and offline (downloaded to your device)
-
-### First workout
-
-1. **Pick a mode** – HIIT or Muscle Training
-2. **Set your times** – Minutes and seconds for exercise/rest
-3. **Add audio** (optional) – Upload an MP3 or audio file for rewards
-4. **Start** – Tap "Start" and begin your workout
-5. **Track** – View your completed workouts in the History tab
-
-## Tips
-
-- **Audio unlock:** On mobile browsers, press Start once to unlock audio playback (browser safety feature)
-- **Offline access:** Install the app to use it without internet
-- **Custom times:** Adjust exercise, rest, and set recovery durations to match your routine
-- **Voice selection:** Choose female, male, or beep countdown sounds before starting
-- **Pause anytime:** Hit Pause during rest periods to take a breather
-
-## Installing on Android
-
-The app works great on Android phones through your browser:
-
-1. Open the app in Chrome on Android
-2. Tap the menu (three dots) → "Install app" or "Add to Home screen"
-3. The app appears as a native app on your home screen
-
-No Google Play Store needed—it's a Progressive Web App.
+```bash
+npm run build
+npm run cap:copy
+npm run cap:open
+```
 
 ## Privacy & offline
 
-- Your workout history is saved **locally on your device**—nothing is uploaded to our servers
-- Audio files are stored **in your browser's storage**—only you can access them
-- Works **completely offline** once installed
+- All workout history and uploaded audio are stored locally on your device using IndexedDB. Nothing is uploaded by default.
+- Works offline after installation.
 
-## Troubleshooting
+## Version log (summary of recent edits)
 
-**Audio not playing?**
-- Mobile browsers require you to interact with the page first. Tap "Start" to unlock audio.
-- Make sure volume is turned on and not muted.
+- v1.0 — Added `Miscellaneous` mode (HIIT behavior without history); added folder upload support for audio; updated UI and README
+- v0.4 — Implemented workout history with calendar view; added IndexedDB persistence for uploaded audio; added pause/resume controls and countdown voice fallback
+- v0.3 — Improved audio playback controls (play/pause/resume), added reward audio selection and randomization
+- v0.2 — Switched minute/second inputs for timers; fixed HIIT loop transitions and rest countdown logic
+- v0.1 — Initial scaffold: React + TypeScript + Vite; basic HIIT and Muscle Training timers
 
-**App not installing?**
-- Use Chrome or a modern browser that supports PWA installation
-- The app must be accessed via HTTPS or localhost (not regular HTTP)
+## Notes & troubleshooting
 
-**Forgot a workout?**
-- Check the History tab to see your past workouts by date
-
-## Feedback
-
-Found a bug or have a suggestion? Feel free to reach out!
+- Folder upload works in Chrome on desktop and many modern browsers; some browsers may not support directory selection.
+- If audio playback doesn't work, check browser permissions and ensure the files are in a supported format (e.g., MP3, WAV).
