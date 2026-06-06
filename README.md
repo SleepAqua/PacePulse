@@ -24,8 +24,11 @@ This repository ships as a native wrapper using Capacitor (Android) or as an ins
 - The app works offline after installation.
 
 ## Changelog
+### v1.5
+- Ensure consecutive HIIT moves are from different categories to avoid repeating the same muscle group across loops
+- Minor fixes and improvements to HIIT move selection and timer resilience
+
 - ### v1.4
-- Notification bar: shows remaining time while a session is active
 - HIIT selection improved: next move will not be from the same category as the previous move
 - Defaults updated: HIIT loops default to 20; Just a Timer loops default to 4; exercise default 2:00; rest default 0:00
 - UI text update: in Just a Timer mode, `Exercise` -> `Do something`, and `Start Timer` -> `Start`

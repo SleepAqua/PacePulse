@@ -118,10 +118,11 @@ const HIIT_MOVES = [
 const App = () => {
   const [mode, setMode] = useState<Mode>('HIIT');
   const [hiitLoops, setHiitLoops] = useState<number | string>(20);
-  const [exerciseMinutes, setExerciseMinutes] = useState<number | string>(2);
-  const [exerciseSeconds, setExerciseSeconds] = useState<number | string>(0);
+  // HIIT defaults: 0:40 exercise, 0:20 rest
+  const [exerciseMinutes, setExerciseMinutes] = useState<number | string>(0);
+  const [exerciseSeconds, setExerciseSeconds] = useState<number | string>(40);
   const [restMinutes, setRestMinutes] = useState<number | string>(0);
-  const [restSeconds, setRestSeconds] = useState<number | string>(0);
+  const [restSeconds, setRestSeconds] = useState<number | string>(20);
   const [hiitActivePhase, setHiitActivePhase] = useState<'exercise' | 'rest' | 'idle'>('idle');
   const [hiitSecondsLeft, setHiitSecondsLeft] = useState(40);
   const [hiitCurrentLoop, setHiitCurrentLoop] = useState(1);
@@ -165,8 +166,9 @@ const App = () => {
   );
 
   const pickRandomMoveAvoidingCategory = (avoidCategory: string | null) => {
-    const candidates = avoidCategory ? HIIT_MOVES.filter((m) => m.category !== avoidCategory) : HIIT_MOVES;
-    const pool = candidates.length ? candidates : HIIT_MOVES;
+    // Try to pick from moves not in the avoided category. If none available, fall back to full list.
+    const candidates = avoidCategory ? HIIT_MOVES.filter((m) => m.category !== avoidCategory) : HIIT_MOVES.slice();
+    const pool = candidates.length ? candidates : HIIT_MOVES.slice();
     return pool[Math.floor(Math.random() * pool.length)];
   };
 
@@ -181,9 +183,19 @@ const App = () => {
   useEffect(() => {
     if (mode === 'Miscellaneous' && Number(hiitLoops) === 20) {
       setHiitLoops(4);
+      // Just a Timer defaults
+      setExerciseMinutes(2);
+      setExerciseSeconds(0);
+      setRestMinutes(0);
+      setRestSeconds(0);
     }
     if (mode === 'HIIT' && Number(hiitLoops) === 4) {
       setHiitLoops(20);
+      // HIIT defaults
+      setExerciseMinutes(0);
+      setExerciseSeconds(40);
+      setRestMinutes(0);
+      setRestSeconds(20);
     }
   }, [mode]);
 
@@ -530,6 +542,7 @@ const App = () => {
     setHiitPaused(false);
     setSessionComplete(false);
     setActiveAudioName('');
+    setHiitLastCategory(null);
   };
 
   const resetMuscle = () => {
@@ -551,7 +564,9 @@ const App = () => {
     setSessionComplete(false);
     setHiitCurrentLoop(1);
     setHiitActivePhase('exercise');
-    const first = pickRandomMoveAvoidingCategory(hiitLastCategory);
+    // Clear last category so the first move isn't constrained by a previous session.
+    setHiitLastCategory(null);
+    const first = pickRandomMoveAvoidingCategory(null);
     setHiitMove(first.name);
     setHiitLastCategory(first.category);
     setHiitSecondsLeft(ex);
