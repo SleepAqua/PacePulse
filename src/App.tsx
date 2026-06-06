@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { openDB } from 'idb';
+import { registerPlugin } from '@capacitor/core';
+
+interface TimerPlugin {
+  startService(options: { seconds: number; phase: string }): Promise<void>;
+  stopService(): Promise<void>;
+}
+
+const TimerPlugin = registerPlugin<TimerPlugin>('TimerPlugin');
 
 type Mode = 'HIIT' | 'Muscle Training' | 'Miscellaneous' | 'History';
 
@@ -265,63 +273,20 @@ const App = () => {
 
   const updateBackgroundNotification = (seconds: number) => {
     try {
-      if (typeof Notification === 'undefined') return;
       const phase = hiitPhaseRef.current || 'exercise';
-      const title = 'PacePulse';
-      const body = `${phase === 'exercise' ? 'Exercise' : 'Rest'} remaining: ${formatTime(seconds)}`;
-
-      // Close previous
-      try {
-        lastBgNotificationRef.current?.close();
-      } catch (e) {
-        /* ignore */
-      }
-
-      // Create new notification with same tag so some browsers replace it
-      const notif = new Notification(title, { body, tag: 'pacepulse-remaining', renotify: true });
-      lastBgNotificationRef.current = notif;
+      TimerPlugin.startService({ seconds, phase });
     } catch (error) {
-      // Notifications may be blocked or unavailable
+      console.warn('Native notification failed:', error);
     }
   };
 
   const startBackgroundNotifications = async () => {
-    if (typeof Notification === 'undefined') return;
-    try {
-      if (Notification.permission === 'default') {
-        // Ask for permission if needed
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        await Notification.requestPermission();
-      }
-    } catch (e) {
-      // ignore
-    }
-    if (Notification.permission !== 'granted') return;
-
-    // Immediately show one
     updateBackgroundNotification(hiitSecondsRef.current || 0);
-
-    // Update every 5 seconds while backgrounded
-    if (bgNotifIntervalRef.current == null) {
-      bgNotifIntervalRef.current = window.setInterval(() => {
-        updateBackgroundNotification(hiitSecondsRef.current || 0);
-      }, 5000) as unknown as number;
-    }
   };
 
   const stopBackgroundNotifications = () => {
     try {
-      if (bgNotifIntervalRef.current != null) {
-        window.clearInterval(bgNotifIntervalRef.current);
-        bgNotifIntervalRef.current = null;
-      }
-    } catch (e) {
-      // ignore
-    }
-    try {
-      lastBgNotificationRef.current?.close();
-      lastBgNotificationRef.current = null;
+      TimerPlugin.stopService();
     } catch (e) {
       // ignore
     }
@@ -522,9 +487,14 @@ const App = () => {
         } else {
           setHiitActivePhase('exercise');
           setHiitCurrentLoop((loop) => loop + 1);
-          const nextMove = pickRandomMoveAvoidingCategory(hiitLastCategory);
-          setHiitMove(nextMove.name);
-          setHiitLastCategory(nextMove.category);
+          if (mode === 'HIIT') {
+            const nextMove = pickRandomMoveAvoidingCategory(hiitLastCategory);
+            setHiitMove(nextMove.name);
+            setHiitLastCategory(nextMove.category);
+          } else {
+            setHiitMove('');
+            setHiitLastCategory(null);
+          }
           setHiitSecondsLeft(ex);
         }
       }
@@ -540,9 +510,14 @@ const App = () => {
       } else {
         setHiitActivePhase('exercise');
         setHiitCurrentLoop((loop) => loop + 1);
-        const nextMove = pickRandomMoveAvoidingCategory(hiitLastCategory);
-        setHiitMove(nextMove.name);
-        setHiitLastCategory(nextMove.category);
+        if (mode === 'HIIT') {
+          const nextMove = pickRandomMoveAvoidingCategory(hiitLastCategory);
+          setHiitMove(nextMove.name);
+          setHiitLastCategory(nextMove.category);
+        } else {
+          setHiitMove('');
+          setHiitLastCategory(null);
+        }
         setHiitSecondsLeft(ex);
       }
     }
@@ -648,9 +623,14 @@ const App = () => {
     setHiitActivePhase('exercise');
     // Clear last category so the first move isn't constrained by a previous session.
     setHiitLastCategory(null);
-    const first = pickRandomMoveAvoidingCategory(null);
-    setHiitMove(first.name);
-    setHiitLastCategory(first.category);
+    if (mode === 'HIIT') {
+      const first = pickRandomMoveAvoidingCategory(null);
+      setHiitMove(first.name);
+      setHiitLastCategory(first.category);
+    } else {
+      // In Just A Timer mode, do not set a HIIT move
+      setHiitMove('');
+    }
     setHiitSecondsLeft(ex);
     setHiitRunning(true);
     setHiitPaused(false);
@@ -741,7 +721,7 @@ const App = () => {
               setActiveAudioName('');
             }}
           >
-            {option === 'Miscellaneous' ? 'Just a timer' : option}
+            {option === 'Miscellaneous' ? 'Just A Timer' : option}
           </button>
         ))}
       </section>
@@ -749,11 +729,11 @@ const App = () => {
       <main>
         <section className="panel">
           <div className="panel-header">
-            <h2>
+              <h2>
               {mode === 'HIIT'
                 ? 'HIIT Timer'
                 : mode === 'Miscellaneous'
-                ? 'Just a Timer'
+                ? 'Just A Timer'
                 : mode === 'Muscle Training'
                 ? 'Muscle Training Timer'
                 : 'Workout History'}

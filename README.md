@@ -25,11 +25,15 @@ This repository ships as a native wrapper using Capacitor (Android) or as an ins
 
  ## Changelog
  ### v1.6
- - When running in the background, the app shows the remaining time in the notification bar (foreground and in-app notification bar kept simple and lightweight)
+ - When running in the background, the app shows the remaining time in the notification bar
 
 ### v1.5
  - Ensure consecutive HIIT moves are from different categories to avoid repeating the same muscle group across loops
  - Minor fixes and improvements to HIIT move selection and timer resilience
+
+### v1.6.1
+- Fix: `Just A Timer` no longer displays HIIT moves; only `HIIT` mode shows moves
+- UI: renaming display label to `Just A Timer` (capital "A")
 
 ### v1.4
 - HIIT selection improved: next move will not be from the same category as the previous move
