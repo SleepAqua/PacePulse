@@ -24,11 +24,14 @@ This repository ships as a native wrapper using Capacitor (Android) or as an ins
 - The app works offline after installation.
 
 ## Changelog
+### v1.3
+- Random HIIT moves: HIIT mode now shows a randomized move each exercise loop to vary workouts
+- Documentation and UI polish
+
 ### v1.2
 - Background-running support: timers compensate for time spent while the app is backgrounded or hidden
 - UI polish: `Miscellaneous` mode now displays as **Just a timer** and its start button reads **Start Timer**
 - Calendar view: reduced calendar cell sizes so the history calendar fits better on narrow screens
-- HIIT enhancement: the HIIT mode now displays a random move for each exercise loop to help vary workouts
 
 ### HIIT exercise pool
 The app selects a random move at the start of each exercise interval from this pool:
