@@ -150,6 +150,10 @@ const App = () => {
   const [selectedHistoryDate, setSelectedHistoryDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const sessionStartTime = useRef<number>(0);
   const hiddenAtRef = useRef<number | null>(null);
+  const bgNotifIntervalRef = useRef<number | null>(null);
+  const lastBgNotificationRef = useRef<Notification | null>(null);
+  const hiitSecondsRef = useRef<number>(hiitSecondsLeft);
+  const hiitPhaseRef = useRef<'exercise' | 'rest' | 'idle'>(hiitActivePhase);
 
   const createAudioUrl = (blob: Blob) => {
     const url = URL.createObjectURL(blob);
@@ -256,6 +260,70 @@ const App = () => {
       } catch (e) {
         console.warn('AudioContext resume failed:', e);
       }
+    }
+  };
+
+  const updateBackgroundNotification = (seconds: number) => {
+    try {
+      if (typeof Notification === 'undefined') return;
+      const phase = hiitPhaseRef.current || 'exercise';
+      const title = 'PacePulse';
+      const body = `${phase === 'exercise' ? 'Exercise' : 'Rest'} remaining: ${formatTime(seconds)}`;
+
+      // Close previous
+      try {
+        lastBgNotificationRef.current?.close();
+      } catch (e) {
+        /* ignore */
+      }
+
+      // Create new notification with same tag so some browsers replace it
+      const notif = new Notification(title, { body, tag: 'pacepulse-remaining', renotify: true });
+      lastBgNotificationRef.current = notif;
+    } catch (error) {
+      // Notifications may be blocked or unavailable
+    }
+  };
+
+  const startBackgroundNotifications = async () => {
+    if (typeof Notification === 'undefined') return;
+    try {
+      if (Notification.permission === 'default') {
+        // Ask for permission if needed
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        await Notification.requestPermission();
+      }
+    } catch (e) {
+      // ignore
+    }
+    if (Notification.permission !== 'granted') return;
+
+    // Immediately show one
+    updateBackgroundNotification(hiitSecondsRef.current || 0);
+
+    // Update every 5 seconds while backgrounded
+    if (bgNotifIntervalRef.current == null) {
+      bgNotifIntervalRef.current = window.setInterval(() => {
+        updateBackgroundNotification(hiitSecondsRef.current || 0);
+      }, 5000) as unknown as number;
+    }
+  };
+
+  const stopBackgroundNotifications = () => {
+    try {
+      if (bgNotifIntervalRef.current != null) {
+        window.clearInterval(bgNotifIntervalRef.current);
+        bgNotifIntervalRef.current = null;
+      }
+    } catch (e) {
+      // ignore
+    }
+    try {
+      lastBgNotificationRef.current?.close();
+      lastBgNotificationRef.current = null;
+    } catch (e) {
+      // ignore
     }
   };
 
@@ -409,11 +477,14 @@ const App = () => {
 
     const timer = window.setInterval(() => {
       setHiitSecondsLeft((prev) => {
-        if (prev <= 1) {
+        const next = prev <= 1 ? 0 : prev - 1;
+        // keep refs in sync for background notifications
+        hiitSecondsRef.current = next;
+        hiitPhaseRef.current = hiitActivePhase;
+        if (next === 0) {
           makeBeep();
-          return 0;
         }
-        return prev - 1;
+        return next;
       });
     }, 1000);
 
@@ -425,6 +496,8 @@ const App = () => {
     if (!hiitRunning || hiitActivePhase === 'idle') return;
     if (hiitSecondsLeft <= 5 && hiitSecondsLeft > 0) {
       speakNumber(hiitSecondsLeft);
+      // update background notification quickly when counting down
+      if (document.hidden) updateBackgroundNotification(hiitSecondsLeft);
     }
   }, [hiitSecondsLeft, hiitRunning, hiitActivePhase]);
 
@@ -493,12 +566,21 @@ const App = () => {
     const handleVisibility = () => {
       if (document.hidden) {
         hiddenAtRef.current = Date.now();
+        // start background notifications if a timer is active
+        if (hiitRunning && !hiitPaused && hiitActivePhase !== 'idle') {
+          hiitSecondsRef.current = hiitSecondsLeft;
+          hiitPhaseRef.current = hiitActivePhase;
+          startBackgroundNotifications();
+        }
         return;
       }
 
       if (!hiddenAtRef.current) return;
       const elapsedSec = Math.floor((Date.now() - hiddenAtRef.current) / 1000);
       hiddenAtRef.current = null;
+
+      // stop background notifications when visible
+      stopBackgroundNotifications();
 
       // Adjust HIIT timer if running
       if (hiitRunning && !hiitPaused && hiitActivePhase !== 'idle') {

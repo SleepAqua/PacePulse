@@ -23,12 +23,15 @@ This repository ships as a native wrapper using Capacitor (Android) or as an ins
 - All workout history and uploaded audio are stored locally using IndexedDB. Nothing is uploaded by default.
 - The app works offline after installation.
 
-## Changelog
-### v1.5
-- Ensure consecutive HIIT moves are from different categories to avoid repeating the same muscle group across loops
-- Minor fixes and improvements to HIIT move selection and timer resilience
+ ## Changelog
+ ### v1.6
+ - When running in the background, the app shows the remaining time in the notification bar (foreground and in-app notification bar kept simple and lightweight)
 
-- ### v1.4
+### v1.5
+ - Ensure consecutive HIIT moves are from different categories to avoid repeating the same muscle group across loops
+ - Minor fixes and improvements to HIIT move selection and timer resilience
+
+### v1.4
 - HIIT selection improved: next move will not be from the same category as the previous move
 - Defaults updated: HIIT loops default to 20; Just a Timer loops default to 4; exercise default 2:00; rest default 0:00
 - UI text update: in Just a Timer mode, `Exercise` -> `Do something`, and `Start Timer` -> `Start`
