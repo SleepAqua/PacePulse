@@ -97,6 +97,7 @@ const App = () => {
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutEntry[]>([]);
   const [selectedHistoryDate, setSelectedHistoryDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const sessionStartTime = useRef<number>(0);
+  const hiddenAtRef = useRef<number | null>(null);
 
   const createAudioUrl = (blob: Blob) => {
     const url = URL.createObjectURL(blob);
@@ -399,6 +400,33 @@ const App = () => {
     return () => window.clearInterval(timer);
   }, [musclePhase, musclePaused]);
 
+  // Keep timers accurate across background/visibility changes by compensating elapsed time
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        hiddenAtRef.current = Date.now();
+        return;
+      }
+
+      if (!hiddenAtRef.current) return;
+      const elapsedSec = Math.floor((Date.now() - hiddenAtRef.current) / 1000);
+      hiddenAtRef.current = null;
+
+      // Adjust HIIT timer if running
+      if (hiitRunning && !hiitPaused && hiitActivePhase !== 'idle') {
+        setHiitSecondsLeft((prev) => Math.max(0, prev - elapsedSec));
+      }
+
+      // Adjust muscle rest timer if in resting phase
+      if (musclePhase === 'resting' && !musclePaused) {
+        setMuscleSecondsLeft((prev) => Math.max(0, prev - elapsedSec));
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [hiitRunning, hiitPaused, hiitActivePhase, musclePhase, musclePaused]);
+
   useEffect(() => {
     if (musclePhase === 'resting' && muscleSecondsLeft === 0 && !musclePaused) {
       if (completedSets.length >= (Number(muscleSets) || 0)) {
@@ -531,7 +559,7 @@ const App = () => {
               setActiveAudioName('');
             }}
           >
-            {option}
+            {option === 'Miscellaneous' ? 'Just a timer' : option}
           </button>
         ))}
       </section>
@@ -540,7 +568,13 @@ const App = () => {
         <section className="panel">
           <div className="panel-header">
             <h2>
-              {mode === 'HIIT' ? 'HIIT Timer' : mode === 'Miscellaneous' ? 'Miscellaneous Timer' : mode === 'Muscle Training' ? 'Muscle Training Timer' : 'Workout History'}
+              {mode === 'HIIT'
+                ? 'HIIT Timer'
+                : mode === 'Miscellaneous'
+                ? 'Just a Timer'
+                : mode === 'Muscle Training'
+                ? 'Muscle Training Timer'
+                : 'Workout History'}
             </h2>
           </div>
 
@@ -694,7 +728,7 @@ const App = () => {
 
               <div className="control-row">
                 <button onClick={startHIIT} disabled={hiitRunning || hiitComplete}>
-                  Start HIIT
+                    {mode === 'Miscellaneous' ? 'Start Timer' : 'Start HIIT'}
                 </button>
                 <button
                   className="pause-button"

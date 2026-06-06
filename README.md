@@ -1,51 +1,80 @@
 # PacePulse
 
-PacePulse is a lightweight workout app for HIIT and Muscle Training. It runs offline and stores your workout history locally so you keep control of your data.
+PacePulse is a compact workout app for HIIT and muscle training. It works offline and stores workout history locally so your data stays on your device.
 
-Important: this project is now shipped as an app (native wrapper via Capacitor or as an installed web app) — it's no longer focused on being distributed as a PWA-only experience.
+This repository ships as a native wrapper using Capacitor (Android) or as an installable web app. It is no longer focused solely on a PWA distribution.
 
-## What it does
-
+## Features
 - HIIT Timer: configurable exercise/rest intervals and loop counts
-- Muscle Training: log sets and reps, automatic rest countdown between sets
-- Miscellaneous mode: works like HIIT but does not record the workout in history
-- Audio rewards: upload audio files or folders; plays a random reward clip when a session finishes
-- Pause/Resume: pause timers and countdown voice; pause and resume reward playback
-- Workout history: view saved workouts by date and aggregated stats for the last 30 days
+- Muscle Training: log sets and reps, with an automatic rest countdown between sets
+- Just a timer: a lightweight timer mode for ad-hoc timing (does not record history)
+- Workout history: view saved workouts by date and see aggregated stats for the last 30 days
+- Audio rewards: upload audio files or folders; the app plays a random reward clip when a session completes
 
-## Quick use
-
-1. Open the app (in a browser or the installed app on your device)
-2. Pick a mode (`HIIT`, `Muscle Training`, or `Miscellaneous`)
+## Quick start
+1. Open the app in a browser or on your device (installed web app / Capacitor wrapper)
+2. Choose a mode (`HIIT`, `Muscle Training`, or `Just a timer`)
 3. Configure minutes and seconds for exercise/rest
-4. (Optional) Upload audio files or an entire folder in the Audio panel
-5. Tap `Start` to begin; use `Pause` during rest if needed
-6. View results in `History` (excluded for `Miscellaneous` mode)
+4. (Optional) Upload audio files or a folder in the Audio panel
+5. Tap `Start` to begin; use `Pause` during rest when needed
+6. View results in `History` (sessions from `Just a timer` are not recorded)
 
-## Installing on Android (for developers)
+## Privacy & offline
+- All workout history and uploaded audio are stored locally using IndexedDB. Nothing is uploaded by default.
+- The app works offline after installation.
 
-Build and open with Capacitor or simply install the app from the browser if supported:
+## Changelog
+### v1.2
+- Background-running support: timers compensate for time spent while the app is backgrounded or hidden
+- UI polish: `Miscellaneous` mode now displays as **Just a timer** and its start button reads **Start Timer**
+- Calendar view: reduced calendar cell sizes so the history calendar fits better on narrow screens
 
+### v1.1
+- Allow users to upload a folder of audio files
+- Incognito mode: optional mode that avoids recording workout history
+
+### v1.0
+- Packaged as an Android app via Capacitor
+
+### v0.4
+- Implemented workout history with calendar view
+- Added IndexedDB persistence for uploaded audio
+- Added pause/resume controls and countdown voice fallback
+
+### Earlier
+- Various improvements to audio playback, timers, and UI
+
+## Building for Android (developer)
+Prerequisites: Node.js, npm, Java JDK, Android Studio / SDK installed.
+
+To build and run locally:
 ```bash
+npm install
 npm run build
 npm run cap:copy
 npm run cap:open
 ```
 
-## Privacy & offline
+To produce an Android App Bundle (AAB) or APK from the Android project:
+```bash
+# From the project root
+npm run build
+npm run cap:copy
+# then build in the android folder
+cd android
+# build an AAB
+./gradlew.bat bundleRelease
+# build an unsigned release APK
+./gradlew.bat assembleRelease
+```
 
-- All workout history and uploaded audio are stored locally on your device using IndexedDB. Nothing is uploaded by default.
-- Works offline after installation.
-
-## Version log (summary of recent edits)
-
-- v1.0 — Added `Miscellaneous` mode (HIIT behavior without history); added folder upload support for audio; updated UI and README
-- v0.4 — Implemented workout history with calendar view; added IndexedDB persistence for uploaded audio; added pause/resume controls and countdown voice fallback
-- v0.3 — Improved audio playback controls (play/pause/resume), added reward audio selection and randomization
-- v0.2 — Switched minute/second inputs for timers; fixed HIIT loop transitions and rest countdown logic
-- v0.1 — Initial scaffold: React + TypeScript + Vite; basic HIIT and Muscle Training timers
+The outputs will be in `android/app/build/outputs/`:
+- App Bundle: `bundle/release/*.aab`
+- APK: `apk/release/*.apk`
 
 ## Notes & troubleshooting
+- Folder upload works in Chrome and most modern browsers; browser support for directory selection varies.
+- If audio playback fails, check file formats (MP3/WAV) and browser permissions.
+- For build errors on Android, ensure Android SDKs and Java are correctly installed and configured.
 
-- Folder upload works in Chrome on desktop and many modern browsers; some browsers may not support directory selection.
-- If audio playback doesn't work, check browser permissions and ensure the files are in a supported format (e.g., MP3, WAV).
+If you'd like, I can run the build steps now and produce the AAB/APK on this machine.
