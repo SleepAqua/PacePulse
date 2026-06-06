@@ -129,6 +129,7 @@ const App = () => {
   const [hiitPaused, setHiitPaused] = useState(false);
   const [hiitMove, setHiitMove] = useState<string>('');
   const [hiitLastCategory, setHiitLastCategory] = useState<string | null>(null);
+  const [scheduledNotifIds, setScheduledNotifIds] = useState<number[]>([]);
   const [muscleSets, setMuscleSets] = useState<number | string>(4);
   const [muscleGroup, setMuscleGroup] = useState<MuscleGroup>('Chest');
   const [muscleRestMinutes, setMuscleRestMinutes] = useState<number | string>(2);
@@ -168,6 +169,60 @@ const App = () => {
     const candidates = avoidCategory ? HIIT_MOVES.filter((m) => m.category !== avoidCategory) : HIIT_MOVES;
     const pool = candidates.length ? candidates : HIIT_MOVES;
     return pool[Math.floor(Math.random() * pool.length)];
+  };
+
+  // Schedule background notifications showing remaining time every 5s until end.
+  const scheduleBackgroundNotifications = async (seconds: number) => {
+    try {
+      const mod = await import('@capacitor/local-notifications');
+      const LocalNotifications = (mod as any).LocalNotifications;
+      try {
+        await LocalNotifications.requestPermissions();
+      } catch (_) {}
+
+      const notifications: any[] = [];
+      let nid = Math.floor(Date.now() % 1000000);
+      for (let t = 0; t <= seconds; t += 5) {
+        const remaining = Math.max(0, seconds - t);
+        notifications.push({
+          id: nid++,
+          title: 'PacePulse',
+          body: `Remaining: ${formatTime(remaining)}`,
+          schedule: { at: new Date(Date.now() + t * 1000) },
+        });
+      }
+      // final completion notification
+      notifications.push({
+        id: nid++,
+        title: 'PacePulse',
+        body: 'Session complete',
+        schedule: { at: new Date(Date.now() + seconds * 1000) },
+      });
+
+      await LocalNotifications.schedule({ notifications });
+      return notifications.map((n) => n.id);
+    } catch (e) {
+      console.warn('LocalNotifications scheduling failed:', e);
+      return [];
+    }
+  };
+
+  const cancelScheduledNotifications = async (ids: number[]) => {
+    if (!ids || !ids.length) return;
+    try {
+      const mod = await import('@capacitor/local-notifications');
+      const LocalNotifications = (mod as any).LocalNotifications;
+      await LocalNotifications.cancel({ notifications: ids.map((id) => ({ id })) });
+    } catch (e) {
+      try {
+        const mod = await import('@capacitor/local-notifications');
+        const LocalNotifications = (mod as any).LocalNotifications;
+        // best-effort cancelAll as fallback
+        await LocalNotifications.cancelAll();
+      } catch (err) {
+        console.warn('Cancel scheduled notifications failed:', err);
+      }
+    }
   };
 
   const muscleComplete = useMemo(
@@ -428,6 +483,13 @@ const App = () => {
       if (rt > 0) {
         setHiitActivePhase('rest');
         setHiitSecondsLeft(rt);
+          // when entering rest, reschedule notifications for rest duration
+          (async () => {
+            cancelScheduledNotifications(scheduledNotifIds);
+            setScheduledNotifIds([]);
+            const ids = await scheduleBackgroundNotifications(rt);
+            setScheduledNotifIds(ids);
+          })();
       } else {
         if (hiitCurrentLoop >= loopsNum) {
           setHiitActivePhase('idle');
@@ -441,6 +503,13 @@ const App = () => {
           setHiitMove(nextMove.name);
           setHiitLastCategory(nextMove.category);
           setHiitSecondsLeft(ex);
+          // reschedule notifications for next exercise interval
+          (async () => {
+            cancelScheduledNotifications(scheduledNotifIds);
+            setScheduledNotifIds([]);
+            const ids = await scheduleBackgroundNotifications(ex);
+            setScheduledNotifIds(ids);
+          })();
         }
       }
       return;
@@ -459,6 +528,12 @@ const App = () => {
         setHiitMove(nextMove.name);
         setHiitLastCategory(nextMove.category);
         setHiitSecondsLeft(ex);
+        (async () => {
+          cancelScheduledNotifications(scheduledNotifIds);
+          setScheduledNotifIds([]);
+          const ids = await scheduleBackgroundNotifications(ex);
+          setScheduledNotifIds(ids);
+        })();
       }
     }
   }, [hiitSecondsLeft, hiitActivePhase, hiitCurrentLoop, hiitLoops, exerciseMinutes, exerciseSeconds, restMinutes, restSeconds, hiitRunning, hiitPaused]);
@@ -473,7 +548,24 @@ const App = () => {
       });
     }, 1000);
 
-    return () => window.clearInterval(timer);
+    // schedule notifications for rest period
+    (async () => {
+      try {
+        cancelScheduledNotifications(scheduledNotifIds);
+        setScheduledNotifIds([]);
+        const ids = await scheduleBackgroundNotifications(muscleSecondsLeft || 0);
+        setScheduledNotifIds(ids);
+      } catch (e) {
+        console.warn('Failed to schedule muscle rest notifications', e);
+      }
+    })();
+
+    return () => {
+      window.clearInterval(timer);
+      // cancel notifications when leaving rest
+      cancelScheduledNotifications(scheduledNotifIds);
+      setScheduledNotifIds([]);
+    };
   }, [musclePhase, musclePaused]);
 
   // Keep timers accurate across background/visibility changes by compensating elapsed time
@@ -530,6 +622,9 @@ const App = () => {
     setHiitPaused(false);
     setSessionComplete(false);
     setActiveAudioName('');
+    // cancel any scheduled notifications
+    cancelScheduledNotifications(scheduledNotifIds);
+    setScheduledNotifIds([]);
   };
 
   const resetMuscle = () => {
@@ -558,12 +653,33 @@ const App = () => {
     setHiitRunning(true);
     setHiitPaused(false);
     setActiveAudioName('');
+
+    // Schedule background notifications showing remaining time every 5s
+    (async () => {
+      try {
+        const ids = await scheduleBackgroundNotifications(ex);
+        setScheduledNotifIds(ids);
+      } catch (e) {
+        console.warn('Failed to schedule notifications', e);
+      }
+    })();
   };
 
   const toggleHIITPause = () => {
     if (!hiitRunning) return;
     const newPausedState = !hiitPaused;
     setHiitPaused(newPausedState);
+    if (newPausedState) {
+      // paused: cancel scheduled notifications
+      cancelScheduledNotifications(scheduledNotifIds);
+      setScheduledNotifIds([]);
+    } else {
+      // resumed: reschedule based on current seconds left
+      (async () => {
+        const ids = await scheduleBackgroundNotifications(hiitSecondsLeft);
+        setScheduledNotifIds(ids);
+      })();
+    }
   };
 
   const toggleMusclePause = () => {

@@ -25,9 +25,11 @@ This repository ships as a native wrapper using Capacitor (Android) or as an ins
 
 ## Changelog
 - ### v1.4
-- Notification bar: shows remaining time while a session is active
+- Notification bar: shows remaining time while a session is active when the app is backgrounded
 - HIIT selection improved: next move will not be from the same category as the previous move
-- Defaults updated: HIIT loops default to 20; Just a Timer loops default to 4; exercise default 2:00; rest default 0:00
+- Defaults updated: 
+    - HIIT Mode: loops default to 20
+    - Just a Timer Mode: loops default to 4; exercise default 2:00; rest default 0:00
 - UI text update: in Just a Timer mode, `Exercise` -> `Do something`, and `Start Timer` -> `Start`
 
 ### v1.3
