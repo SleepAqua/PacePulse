@@ -24,11 +24,20 @@ This repository ships as a native wrapper using Capacitor (Android) or as an ins
 - The app works offline after installation.
 
 ## Changelog
+- ### v1.4
+- Notification bar: shows remaining time while a session is active
+- HIIT selection improved: next move will not be from the same category as the previous move
+- Defaults updated: HIIT loops default to 20; Just a Timer loops default to 4; exercise default 2:00; rest default 0:00
+- UI text update: in Just a Timer mode, `Exercise` -> `Do something`, and `Start Timer` -> `Start`
+
 ### v1.3
-- Random HIIT moves: HIIT mode now shows a randomized move each exercise loop to vary workouts
-- Documentation and UI polish
+ - Random HIIT moves: HIIT mode now shows a randomized move each exercise loop to vary workouts
+ - Documentation and UI polish
 
 ### v1.2
+ - Background-running support: timers compensate for time spent while the app is backgrounded or hidden
+ - UI polish: `Miscellaneous` mode now displays as **Just a timer** and its start button reads **Start Timer**
+ - Calendar view: reduced calendar cell sizes so the history calendar fits better on narrow screens
 - Background-running support: timers compensate for time spent while the app is backgrounded or hidden
 - UI polish: `Miscellaneous` mode now displays as **Just a timer** and its start button reads **Start Timer**
 - Calendar view: reduced calendar cell sizes so the history calendar fits better on narrow screens

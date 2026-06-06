@@ -67,31 +67,68 @@ const makeBeep = () => {
 };
 
 const HIIT_MOVES = [
-  // Cardio
-  'Jumping Jacks','High Knees','Butt Kicks','Skater Hops','Burpees','Mountain Climbers','Jump Rope','Lateral Shuffles','Speed Squats','Star Jumps','Squat Jumps',
-  // Lower Body
-  'Air Squats','Split Squats','Reverse Lunges','Walking Lunges','Jump Lunges','Wall Sit','Single-Leg Squats','Calf Raises','Glute Bridges','Step-Ups',
-  // Upper Body
-  'Push-Ups','Incline Push-Ups','Diamond Push-Ups','Pike Push-Ups','Triceps Dips','Shoulder Taps','Arm Circles','Plank Up-Downs',
-  // Core
-  'Plank','Side Plank','Dead Bug','Hollow Hold','Russian Twists','Bicycle Crunches','Leg Raises','Flutter Kicks','V-Ups','Bear Crawl Hold',
-  // Full Body
-  'Bear Crawls','Crab Walks','Inchworms','Turkish Get-Up','Thrusters','Walkout Push-Ups','Burpee Broad Jumps'
+  { name: 'Jumping Jacks', category: 'Cardio' },
+  { name: 'High Knees', category: 'Cardio' },
+  { name: 'Butt Kicks', category: 'Cardio' },
+  { name: 'Skater Hops', category: 'Cardio' },
+  { name: 'Burpees', category: 'Cardio' },
+  { name: 'Mountain Climbers', category: 'Cardio' },
+  { name: 'Jump Rope', category: 'Cardio' },
+  { name: 'Lateral Shuffles', category: 'Cardio' },
+  { name: 'Speed Squats', category: 'Cardio' },
+  { name: 'Star Jumps', category: 'Cardio' },
+  { name: 'Squat Jumps', category: 'Cardio' },
+  { name: 'Air Squats', category: 'Lower Body' },
+  { name: 'Split Squats', category: 'Lower Body' },
+  { name: 'Reverse Lunges', category: 'Lower Body' },
+  { name: 'Walking Lunges', category: 'Lower Body' },
+  { name: 'Jump Lunges', category: 'Lower Body' },
+  { name: 'Wall Sit', category: 'Lower Body' },
+  { name: 'Single-Leg Squats', category: 'Lower Body' },
+  { name: 'Calf Raises', category: 'Lower Body' },
+  { name: 'Glute Bridges', category: 'Lower Body' },
+  { name: 'Step-Ups', category: 'Lower Body' },
+  { name: 'Push-Ups', category: 'Upper Body' },
+  { name: 'Incline Push-Ups', category: 'Upper Body' },
+  { name: 'Diamond Push-Ups', category: 'Upper Body' },
+  { name: 'Pike Push-Ups', category: 'Upper Body' },
+  { name: 'Triceps Dips', category: 'Upper Body' },
+  { name: 'Shoulder Taps', category: 'Upper Body' },
+  { name: 'Arm Circles', category: 'Upper Body' },
+  { name: 'Plank Up-Downs', category: 'Upper Body' },
+  { name: 'Plank', category: 'Core' },
+  { name: 'Side Plank', category: 'Core' },
+  { name: 'Dead Bug', category: 'Core' },
+  { name: 'Hollow Hold', category: 'Core' },
+  { name: 'Russian Twists', category: 'Core' },
+  { name: 'Bicycle Crunches', category: 'Core' },
+  { name: 'Leg Raises', category: 'Core' },
+  { name: 'Flutter Kicks', category: 'Core' },
+  { name: 'V-Ups', category: 'Core' },
+  { name: 'Bear Crawl Hold', category: 'Core' },
+  { name: 'Bear Crawls', category: 'Full Body' },
+  { name: 'Crab Walks', category: 'Full Body' },
+  { name: 'Inchworms', category: 'Full Body' },
+  { name: 'Turkish Get-Up', category: 'Full Body' },
+  { name: 'Thrusters', category: 'Full Body' },
+  { name: 'Walkout Push-Ups', category: 'Full Body' },
+  { name: 'Burpee Broad Jumps', category: 'Full Body' }
 ];
 
 const App = () => {
   const [mode, setMode] = useState<Mode>('HIIT');
-  const [hiitLoops, setHiitLoops] = useState<number | string>(5);
-  const [exerciseMinutes, setExerciseMinutes] = useState<number | string>(0);
-  const [exerciseSeconds, setExerciseSeconds] = useState<number | string>(40);
+  const [hiitLoops, setHiitLoops] = useState<number | string>(20);
+  const [exerciseMinutes, setExerciseMinutes] = useState<number | string>(2);
+  const [exerciseSeconds, setExerciseSeconds] = useState<number | string>(0);
   const [restMinutes, setRestMinutes] = useState<number | string>(0);
-  const [restSeconds, setRestSeconds] = useState<number | string>(20);
+  const [restSeconds, setRestSeconds] = useState<number | string>(0);
   const [hiitActivePhase, setHiitActivePhase] = useState<'exercise' | 'rest' | 'idle'>('idle');
   const [hiitSecondsLeft, setHiitSecondsLeft] = useState(40);
   const [hiitCurrentLoop, setHiitCurrentLoop] = useState(1);
   const [hiitRunning, setHiitRunning] = useState(false);
   const [hiitPaused, setHiitPaused] = useState(false);
   const [hiitMove, setHiitMove] = useState<string>('');
+  const [hiitLastCategory, setHiitLastCategory] = useState<string | null>(null);
   const [muscleSets, setMuscleSets] = useState<number | string>(4);
   const [muscleGroup, setMuscleGroup] = useState<MuscleGroup>('Chest');
   const [muscleRestMinutes, setMuscleRestMinutes] = useState<number | string>(2);
@@ -127,7 +164,11 @@ const App = () => {
     [hiitCurrentLoop, hiitLoops, hiitActivePhase]
   );
 
-  const getRandomMove = () => HIIT_MOVES[Math.floor(Math.random() * HIIT_MOVES.length)];
+  const pickRandomMoveAvoidingCategory = (avoidCategory: string | null) => {
+    const candidates = avoidCategory ? HIIT_MOVES.filter((m) => m.category !== avoidCategory) : HIIT_MOVES;
+    const pool = candidates.length ? candidates : HIIT_MOVES;
+    return pool[Math.floor(Math.random() * pool.length)];
+  };
 
   const muscleComplete = useMemo(
     () => completedSets.length >= (Number(muscleSets) || 0) && musclePhase === 'done',
@@ -135,6 +176,16 @@ const App = () => {
   );
 
   const totalReps = completedSets.reduce((sum, value) => sum + value, 0);
+
+  // Adjust default loop counts when switching between HIIT and Just a timer
+  useEffect(() => {
+    if (mode === 'Miscellaneous' && Number(hiitLoops) === 20) {
+      setHiitLoops(4);
+    }
+    if (mode === 'HIIT' && Number(hiitLoops) === 4) {
+      setHiitLoops(20);
+    }
+  }, [mode]);
 
   const playRewardAudio = () => {
     if (rewardAudioRef.current) {
@@ -195,6 +246,9 @@ const App = () => {
       }
     }
   };
+
+  const remainingSeconds = hiitRunning && hiitActivePhase !== 'idle' ? hiitSecondsLeft : musclePhase === 'resting' ? muscleSecondsLeft : null;
+  const remainingDisplay = remainingSeconds !== null ? formatTime(remainingSeconds) : null;
 
   const saveWorkoutEntry = async (entry: Omit<WorkoutEntry, 'id'>) => {
     try {
@@ -383,7 +437,9 @@ const App = () => {
         } else {
           setHiitActivePhase('exercise');
           setHiitCurrentLoop((loop) => loop + 1);
-          setHiitMove(getRandomMove());
+          const nextMove = pickRandomMoveAvoidingCategory(hiitLastCategory);
+          setHiitMove(nextMove.name);
+          setHiitLastCategory(nextMove.category);
           setHiitSecondsLeft(ex);
         }
       }
@@ -399,7 +455,9 @@ const App = () => {
       } else {
         setHiitActivePhase('exercise');
         setHiitCurrentLoop((loop) => loop + 1);
-        setHiitMove(getRandomMove());
+        const nextMove = pickRandomMoveAvoidingCategory(hiitLastCategory);
+        setHiitMove(nextMove.name);
+        setHiitLastCategory(nextMove.category);
         setHiitSecondsLeft(ex);
       }
     }
@@ -493,7 +551,9 @@ const App = () => {
     setSessionComplete(false);
     setHiitCurrentLoop(1);
     setHiitActivePhase('exercise');
-    setHiitMove(getRandomMove());
+    const first = pickRandomMoveAvoidingCategory(hiitLastCategory);
+    setHiitMove(first.name);
+    setHiitLastCategory(first.category);
     setHiitSecondsLeft(ex);
     setHiitRunning(true);
     setHiitPaused(false);
@@ -566,6 +626,12 @@ const App = () => {
         <h1>PacePulse Timer</h1>
         <p>HIIT & Muscle Training timer with reward audio for session completion.</p>
       </header>
+
+      {remainingDisplay ? (
+        <div className="notification-bar" role="status" aria-live="polite">
+          Remaining: {remainingDisplay}
+        </div>
+      ) : null}
 
       <section className="mode-switcher">
         {(['HIIT', 'Muscle Training', 'Miscellaneous', 'History'] as Mode[]).map((option) => (
@@ -684,7 +750,7 @@ const App = () => {
                   />
                 </label>
                 <label>
-                  Exercise
+                  {mode === 'Miscellaneous' ? 'Do something' : 'Exercise'}
                   <div className="inline-inputs-container">
                     <div className="inline-inputs">
                       <div className="input-with-label">
@@ -748,7 +814,7 @@ const App = () => {
 
               <div className="control-row">
                 <button onClick={startHIIT} disabled={hiitRunning || hiitComplete}>
-                    {mode === 'Miscellaneous' ? 'Start Timer' : 'Start HIIT'}
+                  {mode === 'Miscellaneous' ? 'Start' : 'Start HIIT'}
                 </button>
                 <button
                   className="pause-button"
