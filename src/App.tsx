@@ -66,6 +66,19 @@ const makeBeep = () => {
   }
 };
 
+const HIIT_MOVES = [
+  // Cardio
+  'Jumping Jacks','High Knees','Butt Kicks','Skater Hops','Burpees','Mountain Climbers','Jump Rope','Lateral Shuffles','Speed Squats','Star Jumps','Squat Jumps',
+  // Lower Body
+  'Air Squats','Split Squats','Reverse Lunges','Walking Lunges','Jump Lunges','Wall Sit','Single-Leg Squats','Calf Raises','Glute Bridges','Step-Ups',
+  // Upper Body
+  'Push-Ups','Incline Push-Ups','Diamond Push-Ups','Pike Push-Ups','Triceps Dips','Shoulder Taps','Arm Circles','Plank Up-Downs',
+  // Core
+  'Plank','Side Plank','Dead Bug','Hollow Hold','Russian Twists','Bicycle Crunches','Leg Raises','Flutter Kicks','V-Ups','Bear Crawl Hold',
+  // Full Body
+  'Bear Crawls','Crab Walks','Inchworms','Turkish Get-Up','Thrusters','Walkout Push-Ups','Burpee Broad Jumps'
+];
+
 const App = () => {
   const [mode, setMode] = useState<Mode>('HIIT');
   const [hiitLoops, setHiitLoops] = useState<number | string>(5);
@@ -78,6 +91,7 @@ const App = () => {
   const [hiitCurrentLoop, setHiitCurrentLoop] = useState(1);
   const [hiitRunning, setHiitRunning] = useState(false);
   const [hiitPaused, setHiitPaused] = useState(false);
+  const [hiitMove, setHiitMove] = useState<string>('');
   const [muscleSets, setMuscleSets] = useState<number | string>(4);
   const [muscleGroup, setMuscleGroup] = useState<MuscleGroup>('Chest');
   const [muscleRestMinutes, setMuscleRestMinutes] = useState<number | string>(2);
@@ -112,6 +126,8 @@ const App = () => {
     () => hiitCurrentLoop > (Number(hiitLoops) || 0) && hiitActivePhase === 'idle',
     [hiitCurrentLoop, hiitLoops, hiitActivePhase]
   );
+
+  const getRandomMove = () => HIIT_MOVES[Math.floor(Math.random() * HIIT_MOVES.length)];
 
   const muscleComplete = useMemo(
     () => completedSets.length >= (Number(muscleSets) || 0) && musclePhase === 'done',
@@ -367,6 +383,7 @@ const App = () => {
         } else {
           setHiitActivePhase('exercise');
           setHiitCurrentLoop((loop) => loop + 1);
+          setHiitMove(getRandomMove());
           setHiitSecondsLeft(ex);
         }
       }
@@ -382,6 +399,7 @@ const App = () => {
       } else {
         setHiitActivePhase('exercise');
         setHiitCurrentLoop((loop) => loop + 1);
+        setHiitMove(getRandomMove());
         setHiitSecondsLeft(ex);
       }
     }
@@ -475,6 +493,7 @@ const App = () => {
     setSessionComplete(false);
     setHiitCurrentLoop(1);
     setHiitActivePhase('exercise');
+    setHiitMove(getRandomMove());
     setHiitSecondsLeft(ex);
     setHiitRunning(true);
     setHiitPaused(false);
@@ -724,6 +743,7 @@ const App = () => {
                 <p>Loop {Math.min(hiitCurrentLoop, Number(hiitLoops) || 0)} / {Number(hiitLoops) || 0}</p>
                 <p>Phase: {hiitActivePhase === 'idle' ? 'Idle' : hiitActivePhase}</p>
                 <p className="timer-display">{formatTime(hiitSecondsLeft)}</p>
+                {hiitMove ? <p style={{marginTop:8}}>Current move: <strong>{hiitMove}</strong></p> : null}
               </div>
 
               <div className="control-row">

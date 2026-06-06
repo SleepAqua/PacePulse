@@ -28,6 +28,66 @@ This repository ships as a native wrapper using Capacitor (Android) or as an ins
 - Background-running support: timers compensate for time spent while the app is backgrounded or hidden
 - UI polish: `Miscellaneous` mode now displays as **Just a timer** and its start button reads **Start Timer**
 - Calendar view: reduced calendar cell sizes so the history calendar fits better on narrow screens
+- HIIT enhancement: the HIIT mode now displays a random move for each exercise loop to help vary workouts
+
+### HIIT exercise pool
+The app selects a random move at the start of each exercise interval from this pool:
+
+Cardio
+- Jumping Jacks
+- High Knees
+- Butt Kicks
+- Skater Hops
+- Burpees
+- Mountain Climbers
+- Jump Rope
+- Lateral Shuffles
+- Speed Squats
+- Star Jumps
+- Squat Jumps
+
+Lower Body
+- Air Squats
+- Split Squats
+- Reverse Lunges
+- Walking Lunges
+- Jump Lunges
+- Wall Sit
+- Single-Leg Squats
+- Calf Raises
+- Glute Bridges
+- Step-Ups
+
+Upper Body
+- Push-Ups
+- Incline Push-Ups
+- Diamond Push-Ups
+- Pike Push-Ups
+- Triceps Dips
+- Shoulder Taps
+- Arm Circles
+- Plank Up-Downs
+
+Core
+- Plank
+- Side Plank
+- Dead Bug
+- Hollow Hold
+- Russian Twists
+- Bicycle Crunches
+- Leg Raises
+- Flutter Kicks
+- V-Ups
+- Bear Crawl Hold
+
+Full Body
+- Bear Crawls
+- Crab Walks
+- Inchworms
+- Turkish Get-Up
+- Thrusters
+- Walkout Push-Ups
+- Burpee Broad Jumps
 
 ### v1.1
 - Allow users to upload a folder of audio files
