@@ -158,5 +158,3 @@ The outputs will be in `android/app/build/outputs/`:
 - Folder upload works in Chrome and most modern browsers; browser support for directory selection varies.
 - If audio playback fails, check file formats (MP3/WAV) and browser permissions.
 - For build errors on Android, ensure Android SDKs and Java are correctly installed and configured.
-
-If you'd like, I can run the build steps now and produce the AAB/APK on this machine.
